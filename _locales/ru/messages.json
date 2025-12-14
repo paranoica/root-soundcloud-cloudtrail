@@ -1,0 +1,10 @@
+{
+    "extensionName": {
+        "message": "CloudTrail - Статистика SoundCloud",
+        "description": "Название расширения в браузере"
+    },
+    "extensionDescription": {
+        "message": "Отслеживайте время прослушивания SoundCloud и узнайте свою музыкальную статистику",
+        "description": "Описание расширения"
+    }
+}

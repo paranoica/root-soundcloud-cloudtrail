@@ -1,0 +1,224 @@
+{
+    "common": {
+        "appName": "CloudTrail",
+        "loading": "Загрузка...",
+        "error": "Что-то пошло не так",
+        "retry": "Повторить",
+        "save": "Сохранить",
+        "cancel": "Отмена",
+        "close": "Закрыть",
+        "export": "Экспорт",
+        "import": "Импорт",
+        "share": "Поделиться",
+        "download": "Скачать",
+        "copy": "Копировать",
+        "copied": "Скопировано!",
+        "settings": "Настройки",
+        "dashboard": "Дашборд",
+        "back": "Назад",
+        "next": "Далее",
+        "previous": "Назад",
+        "viewAll": "Смотреть все",
+        "noData": "Пока нет данных",
+        "plays": "прослушиваний",
+        "play": "прослушивание"
+    },
+    "popup": {
+        "title": "Статистика прослушиваний",
+        "totalTime": "Общее время",
+        "todayTime": "Сегодня",
+        "weekTime": "На этой неделе",
+        "monthTime": "В этом месяце",
+        "topTracks": "Топ треков",
+        "currentlyPlaying": "Сейчас играет",
+        "notPlaying": "Ничего не играет",
+        "openDashboard": "Открыть дашборд",
+        "quickStats": "Краткая статистика",
+        "tracksPlayed": "Треков прослушано",
+        "artistsListened": "Артистов"
+    },
+    "dashboard": {
+        "nav": {
+            "overview": "Обзор",
+            "tracks": "Треки",
+            "artists": "Артисты",
+            "wrapped": "Итоги года",
+            "settings": "Настройки"
+        },
+        "overview": {
+            "title": "Обзор прослушиваний",
+            "totalListeningTime": "Общее время прослушивания",
+            "totalTracks": "Всего треков",
+            "totalArtists": "Всего артистов",
+            "listeningActivity": "Активность прослушивания",
+            "recentlyPlayed": "Недавно прослушанные",
+            "topThisWeek": "Топ за неделю"
+        },
+        "tracks": {
+            "title": "Ваши треки",
+            "searchPlaceholder": "Поиск треков...",
+            "sortBy": "Сортировка",
+            "sortPlayCount": "По количеству",
+            "sortListenTime": "По времени",
+            "sortRecent": "По дате",
+            "sortAlpha": "По алфавиту",
+            "filterGenre": "Жанр",
+            "allGenres": "Все жанры",
+            "playCount": "{count} прослушиваний",
+            "listenTime": "{time} прослушано"
+        },
+        "artists": {
+            "title": "Ваши артисты",
+            "searchPlaceholder": "Поиск артистов...",
+            "tracksListened": "{count} треков",
+            "totalTime": "{time} всего"
+        },
+        "settings": {
+            "title": "Настройки",
+            "general": "Основные",
+            "language": "Язык",
+            "theme": "Тема",
+            "themeDark": "Тёмная",
+            "themeLight": "Светлая",
+            "themeSystem": "Системная",
+            "tracking": "Отслеживание",
+            "enableTracking": "Включить отслеживание",
+            "enableTrackingDesc": "Считать секунды при воспроизведении",
+            "notifications": "Уведомления",
+            "showNotifications": "Показывать уведомления",
+            "showNotificationsDesc": "Уведомлять о достижениях",
+            "data": "Управление данными",
+            "exportData": "Экспорт данных",
+            "exportDataDesc": "Скачать все данные в формате JSON",
+            "importData": "Импорт данных",
+            "importDataDesc": "Восстановить из резервной копии",
+            "clearData": "Очистить все данные",
+            "clearDataDesc": "Удалить всю историю прослушиваний",
+            "clearDataConfirm": "Вы уверены? Это действие необратимо.",
+            "api": "SoundCloud API",
+            "clientId": "Client ID",
+            "clientIdDesc": "Опционально: укажите свой SC client ID",
+            "clientIdPlaceholder": "Введите client ID...",
+            "about": "О расширении",
+            "version": "Версия",
+            "github": "GitHub",
+            "reportBug": "Сообщить об ошибке"
+        }
+    },
+    "wrapped": {
+        "title": "Ваш год в музыке",
+        "generate": "Создать итоги",
+        "generating": "Создаём ваши итоги...",
+        "yearSelector": "Выберите год",
+        "notEnoughData": "Недостаточно данных",
+        "notEnoughDataDesc": "Продолжайте слушать, чтобы получить итоги года!",
+        "share": "Поделиться итогами",
+        "download": "Скачать картинку",
+        "slides": {
+            "intro": {
+                "title": "Ваш {year} на SoundCloud",
+                "subtitle": "Посмотрим, что вы слушали"
+            },
+            "totalTime": {
+                "title": "Вы слушали",
+                "subtitle": "Это как {equivalent}!",
+                "equivalents": {
+                    "movies": "{count} фильмов",
+                    "flights": "{count} перелётов в Токио",
+                    "books": "{count} аудиокниг"
+                }
+            },
+            "topTracks": {
+                "title": "Ваш топ треков",
+                "subtitle": "Песни, которые определили ваш год",
+                "number1": "Ваш трек #1",
+                "playedTimes": "Прослушан {count} раз"
+            },
+            "topArtists": {
+                "title": "Ваш топ артистов",
+                "subtitle": "Любимые исполнители этого года",
+                "number1": "Ваш артист #1",
+                "minutesListened": "{minutes} минут прослушивания"
+            },
+            "patterns": {
+                "title": "Ваши паттерны",
+                "peakHour": "Пиковый час",
+                "peakDay": "Самый активный день",
+                "peakMonth": "Самый насыщенный месяц"
+            },
+            "summary": {
+                "title": "Вот и всё!",
+                "subtitle": "Спасибо, что слушали",
+                "sharePrompt": "Поделитесь итогами с друзьями"
+            }
+        }
+    },
+    "time": {
+        "justNow": "Только что",
+        "seconds": "{count}с",
+        "minutes": "{count}м",
+        "hours": "{count}ч",
+        "days": "{count}д",
+        "hoursMinutes": "{hours}ч {minutes}м",
+        "daysHours": "{days}д {hours}ч",
+        "today": "Сегодня",
+        "yesterday": "Вчера",
+        "thisWeek": "На этой неделе",
+        "thisMonth": "В этом месяце",
+        "thisYear": "В этом году",
+        "allTime": "За всё время",
+        "daysOfWeek": {
+            "0": "Воскресенье",
+            "1": "Понедельник",
+            "2": "Вторник",
+            "3": "Среда",
+            "4": "Четверг",
+            "5": "Пятница",
+            "6": "Суббота"
+        },
+        "months": {
+            "1": "Январь",
+            "2": "Февраль",
+            "3": "Март",
+            "4": "Апрель",
+            "5": "Май",
+            "6": "Июнь",
+            "7": "Июль",
+            "8": "Август",
+            "9": "Сентябрь",
+            "10": "Октябрь",
+            "11": "Ноябрь",
+            "12": "Декабрь"
+        }
+    },
+    "filters": {
+        "period": "Период",
+        "today": "Сегодня",
+        "yesterday": "Вчера",
+        "last7Days": "Последние 7 дней",
+        "last30Days": "Последние 30 дней",
+        "thisMonth": "Этот месяц",
+        "lastMonth": "Прошлый месяц",
+        "thisYear": "Этот год",
+        "allTime": "Всё время",
+        "custom": "Свой период"
+    },
+    "errors": {
+        "storageFull": "Хранилище заполнено. Экспортируйте и очистите данные.",
+        "apiError": "Не удалось подключиться к SoundCloud",
+        "networkError": "Ошибка сети. Проверьте подключение.",
+        "parseError": "Не удалось получить информацию о треке",
+        "importError": "Ошибка импорта. Неверный формат.",
+        "exportError": "Ошибка экспорта данных"
+    },
+    "notifications": {
+        "milestone": {
+            "hours": "Вы прослушали {count} часов!",
+            "tracks": "Вы открыли {count} треков!"
+        },
+        "tracking": {
+            "started": "Отслеживается: {track}",
+            "paused": "Отслеживание приостановлено"
+        }
+    }
+}

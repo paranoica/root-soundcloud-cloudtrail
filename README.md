@@ -21,12 +21,14 @@
 *(Coming soon)*
 
 ### Manual Installation
+```
 1. Download or clone this repository
 2. Run `npm install && npm run build`
 3. Open `chrome://extensions/`
 4. Enable "Developer mode"
 5. Click "Load unpacked"
 6. Select the `dist` folder
+```
 
 ## How It Works
 

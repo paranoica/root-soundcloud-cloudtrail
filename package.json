@@ -1,0 +1,31 @@
+{
+    "name": "cloudtrail",
+    "version": "1.0.0",
+    "description": "Premium SoundCloud listening statistics tracker. Track your listening habits, discover your top tracks, and visualize your music journey.",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite --watch",
+        "build": "vite build",
+        "preview": "vite preview",
+        "lint": "eslint src/**/*.js",
+        "format": "prettier --write src/**/*.{js,css,html,json}",
+        "zip": "node scripts/zip.js"
+    },
+    "devDependencies": {
+        "@types/chrome": "^0.0.260",
+        "eslint": "^8.57.0",
+        "prettier": "^3.2.5",
+        "vite": "^5.2.0"
+    },
+    "dependencies": {
+        "chart.js": "^4.4.2",
+        "html2canvas": "^1.4.1",
+        "idb": "^8.0.0"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "author": "paranoica",
+    "license": "MIT"
+}

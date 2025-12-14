@@ -1,0 +1,224 @@
+{
+    "common": {
+        "appName": "CloudTrail",
+        "loading": "Loading...",
+        "error": "Something went wrong",
+        "retry": "Retry",
+        "save": "Save",
+        "cancel": "Cancel",
+        "close": "Close",
+        "export": "Export",
+        "import": "Import",
+        "share": "Share",
+        "download": "Download",
+        "copy": "Copy",
+        "copied": "Copied!",
+        "settings": "Settings",
+        "dashboard": "Dashboard",
+        "back": "Back",
+        "next": "Next",
+        "previous": "Previous",
+        "viewAll": "View All",
+        "noData": "No data yet",
+        "plays": "plays",
+        "play": "play"
+    },
+    "popup": {
+        "title": "Your Listening Stats",
+        "totalTime": "Total Listening Time",
+        "todayTime": "Today",
+        "weekTime": "This Week",
+        "monthTime": "This Month",
+        "topTracks": "Top Tracks",
+        "currentlyPlaying": "Now Playing",
+        "notPlaying": "Nothing playing",
+        "openDashboard": "Open Full Dashboard",
+        "quickStats": "Quick Stats",
+        "tracksPlayed": "Tracks Played",
+        "artistsListened": "Artists"
+    },
+    "dashboard": {
+        "nav": {
+            "overview": "Overview",
+            "tracks": "Tracks",
+            "artists": "Artists",
+            "wrapped": "Wrapped",
+            "settings": "Settings"
+        },
+        "overview": {
+            "title": "Listening Overview",
+            "totalListeningTime": "Total Listening Time",
+            "totalTracks": "Total Tracks",
+            "totalArtists": "Total Artists",
+            "listeningActivity": "Listening Activity",
+            "recentlyPlayed": "Recently Played",
+            "topThisWeek": "Top This Week"
+        },
+        "tracks": {
+            "title": "Your Tracks",
+            "searchPlaceholder": "Search tracks...",
+            "sortBy": "Sort by",
+            "sortPlayCount": "Play Count",
+            "sortListenTime": "Listening Time",
+            "sortRecent": "Recently Played",
+            "sortAlpha": "Alphabetical",
+            "filterGenre": "Genre",
+            "allGenres": "All Genres",
+            "playCount": "{count} plays",
+            "listenTime": "{time} listened"
+        },
+        "artists": {
+            "title": "Your Artists",
+            "searchPlaceholder": "Search artists...",
+            "tracksListened": "{count} tracks",
+            "totalTime": "{time} total"
+        },
+        "settings": {
+            "title": "Settings",
+            "general": "General",
+            "language": "Language",
+            "theme": "Theme",
+            "themeDark": "Dark",
+            "themeLight": "Light",
+            "themeSystem": "System",
+            "tracking": "Tracking",
+            "enableTracking": "Enable Listening Tracking",
+            "enableTrackingDesc": "Count seconds while tracks are playing",
+            "notifications": "Notifications",
+            "showNotifications": "Show Notifications",
+            "showNotificationsDesc": "Get notified of milestones",
+            "data": "Data Management",
+            "exportData": "Export Data",
+            "exportDataDesc": "Download all your listening data as JSON",
+            "importData": "Import Data",
+            "importDataDesc": "Restore from a previous export",
+            "clearData": "Clear All Data",
+            "clearDataDesc": "Permanently delete all listening history",
+            "clearDataConfirm": "Are you sure? This cannot be undone.",
+            "api": "SoundCloud API",
+            "clientId": "Client ID",
+            "clientIdDesc": "Optional: Provide your own SC client ID",
+            "clientIdPlaceholder": "Enter client ID...",
+            "about": "About",
+            "version": "Version",
+            "github": "GitHub",
+            "reportBug": "Report a Bug"
+        }
+    },
+    "wrapped": {
+        "title": "Your Year in Music",
+        "generate": "Generate Wrapped",
+        "generating": "Creating your Wrapped...",
+        "yearSelector": "Select Year",
+        "notEnoughData": "Not enough data for Wrapped",
+        "notEnoughDataDesc": "Keep listening to generate your year in review!",
+        "share": "Share Your Wrapped",
+        "download": "Download Image",
+        "slides": {
+            "intro": {
+                "title": "Your {year} on SoundCloud",
+                "subtitle": "Let's see what you've been listening to"
+            },
+            "totalTime": {
+                "title": "You listened for",
+                "subtitle": "That's {equivalent}!",
+                "equivalents": {
+                    "movies": "{count} movies",
+                    "flights": "{count} flights to Tokyo",
+                    "books": "{count} audiobooks"
+                }
+            },
+            "topTracks": {
+                "title": "Your Top Tracks",
+                "subtitle": "The songs that defined your year",
+                "number1": "Your #1 Track",
+                "playedTimes": "Played {count} times"
+            },
+            "topArtists": {
+                "title": "Your Top Artists",
+                "subtitle": "The creators you loved most",
+                "number1": "Your #1 Artist",
+                "minutesListened": "{minutes} minutes listened"
+            },
+            "patterns": {
+                "title": "Your Listening Patterns",
+                "peakHour": "Peak listening hour",
+                "peakDay": "Most active day",
+                "peakMonth": "Biggest month"
+            },
+            "summary": {
+                "title": "That's a Wrap!",
+                "subtitle": "Thanks for listening",
+                "sharePrompt": "Share your Wrapped with friends"
+            }
+        }
+    },
+    "time": {
+        "justNow": "Just now",
+        "seconds": "{count}s",
+        "minutes": "{count}m",
+        "hours": "{count}h",
+        "days": "{count}d",
+        "hoursMinutes": "{hours}h {minutes}m",
+        "daysHours": "{days}d {hours}h",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "thisWeek": "This Week",
+        "thisMonth": "This Month",
+        "thisYear": "This Year",
+        "allTime": "All Time",
+        "daysOfWeek": {
+            "0": "Sunday",
+            "1": "Monday",
+            "2": "Tuesday",
+            "3": "Wednesday",
+            "4": "Thursday",
+            "5": "Friday",
+            "6": "Saturday"
+        },
+        "months": {
+            "1": "January",
+            "2": "February",
+            "3": "March",
+            "4": "April",
+            "5": "May",
+            "6": "June",
+            "7": "July",
+            "8": "August",
+            "9": "September",
+            "10": "October",
+            "11": "November",
+            "12": "December"
+        }
+    },
+    "filters": {
+        "period": "Time Period",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "last7Days": "Last 7 Days",
+        "last30Days": "Last 30 Days",
+        "thisMonth": "This Month",
+        "lastMonth": "Last Month",
+        "thisYear": "This Year",
+        "allTime": "All Time",
+        "custom": "Custom Range"
+    },
+    "errors": {
+        "storageFull": "Storage is full. Please export and clear some data.",
+        "apiError": "Failed to connect to SoundCloud",
+        "networkError": "Network error. Please check your connection.",
+        "parseError": "Failed to parse track information",
+        "importError": "Failed to import data. Invalid format.",
+        "exportError": "Failed to export data"
+    },
+    "notifications": {
+        "milestone": {
+            "hours": "You've listened for {count} hours!",
+            "tracks": "You've discovered {count} tracks!"
+        },
+        "tracking": {
+            "started": "Now tracking: {track}",
+            "paused": "Tracking paused"
+        }
+    }
+}

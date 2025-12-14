@@ -1,0 +1,10 @@
+{
+    "extensionName": {
+        "message": "CloudTrail - SoundCloud Stats",
+        "description": "Name of the extension shown in browser"
+    },
+    "extensionDescription": {
+        "message": "Track your SoundCloud listening time and discover your music stats",
+        "description": "Description of the extension"
+    }
+}
