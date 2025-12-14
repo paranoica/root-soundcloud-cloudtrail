@@ -1,16 +1,19 @@
 import { STORAGE_KEYS } from "../shared/constants.js";
-import {
-    createTrackStats,
-    createSession,
-    createDailyStats,
-} from "../shared/storage/schema.js";
 import { getDateString, getHour } from "../shared/utils/time.js";
-import storageSync from "../shared/storage/sync.js";
 
 class StorageManager {
     constructor() {
-        this._trackStatsCache = new Map();
-        this._dailyStatsCache = new Map();
+        this._cache = {
+            tracks: {},
+            daily: {},
+            trackInfo: {}
+        };
+        this._dirty = {
+            tracks: false,
+            daily: false,
+            trackInfo: false
+        };
+        this._saveTimeout = null;
         this._initialized = false;
     }
 
@@ -19,15 +22,15 @@ class StorageManager {
             return;
 
         try {
-            const trackStats = await storageSync.get(STORAGE_KEYS.TRACKS, {});
-            for (const [trackId, stats] of Object.entries(trackStats)) {
-                this._trackStatsCache.set(trackId, stats);
-            }
+            const data = await chrome.storage.local.get([
+                STORAGE_KEYS.TRACKS,
+                STORAGE_KEYS.DAILY_STATS,
+                STORAGE_KEYS.TRACK_CACHE
+            ]);
 
-            const dailyStats = await storageSync.get(STORAGE_KEYS.DAILY_STATS, {});
-            for (const [date, stats] of Object.entries(dailyStats)) {
-                this._dailyStatsCache.set(date, stats);
-            }
+            this._cache.tracks = data[STORAGE_KEYS.TRACKS] || {};
+            this._cache.daily = data[STORAGE_KEYS.DAILY_STATS] || {};
+            this._cache.trackInfo = data[STORAGE_KEYS.TRACK_CACHE] || {};
 
             this._initialized = true;
         } catch (error) {
@@ -35,60 +38,51 @@ class StorageManager {
         }
     }
 
-    async getTrackInfo(trackId) {
-        const cache = await storageSync.get(STORAGE_KEYS.TRACK_CACHE, {});
-        return cache[trackId] || null;
-    }
-
     async saveTrackInfo(track) {
         if (!track || !track.id)
             return;
 
-        const cache = await storageSync.get(STORAGE_KEYS.TRACK_CACHE, {}); cache[track.id] = {
+        const id = String(track.id);
+        this._cache.trackInfo[id] = {
             ...track,
             cachedAt: Date.now(),
         };
 
-        const entries = Object.entries(cache);
-        if (entries.length > 500) {
-            entries.sort((a, b) => (b[1].cachedAt || 0) - (a[1].cachedAt || 0));
-
-            const toKeep = entries.slice(0, 500);
-            const newCache = Object.fromEntries(toKeep);
-
-            await storageSync.set(STORAGE_KEYS.TRACK_CACHE, newCache);
-        } else {
-            await storageSync.set(STORAGE_KEYS.TRACK_CACHE, cache);
+        const keys = Object.keys(this._cache.trackInfo);
+        if (keys.length > 1000) {
+            delete this._cache.trackInfo[keys[0]];
         }
+
+        this._dirty.trackInfo = true;
+        this._scheduleFlush();
+    }
+
+    async getTrackInfo(trackId) {
+        return this._cache.trackInfo[String(trackId)] || null;
     }
 
     getTrackStats(trackId) {
-        if (this._trackStatsCache.has(trackId)) {
-            return this._trackStatsCache.get(trackId);
+        const id = String(trackId);
+        if (!this._cache.tracks[id]) {
+            this._cache.tracks[id] = {
+                trackId: id,
+                playCount: 0,
+                totalSeconds: 0,
+                lastPlayedAt: 0,
+                dailySeconds: {}
+            };
         }
 
-        return createTrackStats(trackId);
-    }
-
-    async updateTrackStats(trackId, updates) {
-        let stats = this.getTrackStats(trackId);
-
-        stats = {
-            ...stats,
-            ...updates,
-            trackId,
-            lastPlayedAt: Date.now(),
-        };
-
-        this._trackStatsCache.set(trackId, stats);
-        await this._persistTrackStats();
+        return this._cache.tracks[id];
     }
 
     async addListeningTime(trackId, seconds) {
         if (seconds <= 0)
             return;
 
-        const stats = this.getTrackStats(trackId);
+        const id = String(trackId);
+
+        const stats = this.getTrackStats(id);
         const today = getDateString();
 
         stats.totalSeconds = (stats.totalSeconds || 0) + seconds;
@@ -98,266 +92,128 @@ class StorageManager {
             stats.dailySeconds = {};
 
         stats.dailySeconds[today] = (stats.dailySeconds[today] || 0) + seconds;
-        this._trackStatsCache.set(trackId, stats);
+        this._updateDailyGlobalStats(seconds);
 
-        await this._updateDailyStats(seconds);
+        this._dirty.tracks = true;
+        this._scheduleFlush();
     }
 
     async incrementPlayCount(trackId) {
-        const stats = this.getTrackStats(trackId);
+        const id = String(trackId);
+        const stats = this.getTrackStats(id);
 
         stats.playCount = (stats.playCount || 0) + 1;
         stats.lastPlayedAt = Date.now();
 
-        this._trackStatsCache.set(trackId, stats);
-        await this._persistTrackStats();
+        this._dirty.tracks = true;
+        this._scheduleFlush();
     }
 
-    async _updateDailyStats(seconds) {
+    _updateDailyGlobalStats(seconds) {
         const today = getDateString();
         const hour = getHour(Date.now());
 
-        let dailyStats = this._dailyStatsCache.get(today);
-        if (!dailyStats) {
-            dailyStats = createDailyStats();
+        if (!this._cache.daily[today]) {
+            this._cache.daily[today] = {
+                totalSeconds: 0,
+                hourlySeconds: {},
+                sessionsCount: 0,
+                tracksPlayedSet: []
+            };
         }
 
-        dailyStats.totalSeconds = (dailyStats.totalSeconds || 0) + seconds;
-        if (!dailyStats.hourlySeconds)
-            dailyStats.hourlySeconds = {};
-        dailyStats.hourlySeconds[hour] = (dailyStats.hourlySeconds[hour] || 0) + seconds;
+        const dayStats = this._cache.daily[today]; dayStats.totalSeconds += seconds;
+        if (!dayStats.hourlySeconds)
+            dayStats.hourlySeconds = {};
+        dayStats.hourlySeconds[hour] = (dayStats.hourlySeconds[hour] || 0) + seconds;
 
-        this._dailyStatsCache.set(today, dailyStats);
-        await this._persistDailyStats();
+        this._dirty.daily = true;
     }
 
     async recordSession(trackId, seconds, completed = false) {
         if (seconds < 5)
             return;
 
-        const session = createSession(trackId);
-
-        session.endedAt = Date.now();
-        session.seconds = seconds;
-
-        session.completed = completed;
-        session.startedAt = session.endedAt - (seconds * 1000);
-
         const today = getDateString();
-        let dailyStats = this._dailyStatsCache.get(today);
+        if (!this._cache.daily[today])
+            this._updateDailyGlobalStats(0);
 
-        if (!dailyStats) {
-            dailyStats = createDailyStats();
-        }
+        this._cache.daily[today].sessionsCount++;
+        this._dirty.daily = true;
 
-        dailyStats.sessionsCount = (dailyStats.sessionsCount || 0) + 1;
-        this._dailyStatsCache.set(today, dailyStats);
-
-        if (seconds >= 30) {
-            await this.incrementPlayCount(trackId);
-        }
-
-        await this._persistDailyStats();
+        this._scheduleFlush();
     }
 
-    async markTrackPlayed(trackId) {
-        const today = getDateString();
-        let dailyStats = this._dailyStatsCache.get(today);
+    _scheduleFlush() {
+        if (this._saveTimeout)
+            return;
 
-        if (!dailyStats) {
-            dailyStats = createDailyStats();
-        }
-
-        if (!dailyStats.tracksPlayedSet) {
-            dailyStats.tracksPlayedSet = [];
-        }
-
-        if (!dailyStats.tracksPlayedSet.includes(trackId)) {
-            dailyStats.tracksPlayedSet.push(trackId);
-            dailyStats.tracksPlayed = dailyStats.tracksPlayedSet.length;
-
-            this._dailyStatsCache.set(today, dailyStats);
-            await this._persistDailyStats();
-        }
-    }
-
-    async _persistTrackStats() {
-        const data = Object.fromEntries(this._trackStatsCache);
-        await storageSync.set(STORAGE_KEYS.TRACKS, data);
-    }
-
-    async _persistDailyStats() {
-        const data = Object.fromEntries(this._dailyStatsCache);
-        await storageSync.set(STORAGE_KEYS.DAILY_STATS, data);
-    }
-
-    async getTopTracks(options = {}) {
-        const {
-            sortBy = "playCount",
-            limit = 10,
-            period = "all",
-        } = options;
-
-        const allStats = Array.from(this._trackStatsCache.values());
-        let filtered = allStats;
-
-        if (period !== "all") {
-            const { start, end } = this._getDateRange(period); filtered = allStats.filter(s =>
-                s.lastPlayedAt >= start && s.lastPlayedAt <= end
-            );
-        }
-
-        filtered.sort((a, b) => {
-            if (sortBy === "playCount") {
-                return (b.playCount || 0) - (a.playCount || 0);
-            }
-
-            return (b.totalSeconds || 0) - (a.totalSeconds || 0);
-        });
-
-        const topTracks = [];
-        for (const stats of filtered.slice(0, limit)) {
-            const trackInfo = await this.getTrackInfo(stats.trackId);
-            topTracks.push({
-                ...stats,
-                track: trackInfo,
-            });
-        }
-
-        return topTracks;
-    }
-
-    async getTotalStats(period = "all") {
-        const stats = {
-            totalSeconds: 0,
-            totalTracks: 0,
-            totalPlays: 0,
-            totalArtists: new Set(),
-        };
-
-        const { start, end } = this._getDateRange(period);
-
-        for (const trackStats of this._trackStatsCache.values()) {
-            if (period !== "all" &&
-                (trackStats.lastPlayedAt < start || trackStats.lastPlayedAt > end)) {
-                continue;
-            }
-
-            if (period === "all") {
-                stats.totalSeconds += trackStats.totalSeconds || 0;
-            } else {
-                for (const [date, seconds] of Object.entries(trackStats.dailySeconds || {})) {
-                    const dateTs = new Date(date).getTime();
-                    if (dateTs >= start && dateTs <= end) {
-                        stats.totalSeconds += seconds;
-                    }
-                }
-            }
-
-            stats.totalTracks++;
-            stats.totalPlays += trackStats.playCount || 0;
-
-            const trackInfo = await this.getTrackInfo(trackStats.trackId);
-            if (trackInfo?.artistId) {
-                stats.totalArtists.add(trackInfo.artistId);
-            }
-        }
-
-        stats.totalArtists = stats.totalArtists.size;
-        return stats;
-    }
-
-    getDailyStatsForPeriod(period = "month") {
-        const { start, end } = this._getDateRange(period);
-        const result = [];
-
-        for (const [date, stats] of this._dailyStatsCache.entries()) {
-            const dateTs = new Date(date).getTime();
-            if (dateTs >= start && dateTs <= end) {
-                result.push({ date, ...stats });
-            }
-        }
-
-        result.sort((a, b) => new Date(a.date) - new Date(b.date));
-        return result;
-    }
-
-    async getListeningPatterns(year) {
-        const patterns = {
-            byDayOfWeek: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
-            byHour: {},
-            byMonth: {},
-        };
-
-        for (let i = 0; i < 24; i++) {
-            patterns.byHour[i] = 0;
-        }
-
-        for (let i = 1; i <= 12; i++) {
-            patterns.byMonth[i] = 0;
-        }
-
-        const yearStart = new Date(year, 0, 1).getTime();
-        const yearEnd = new Date(year, 11, 31, 23, 59, 59).getTime();
-
-        for (const [date, stats] of this._dailyStatsCache.entries()) {
-            const dateObj = new Date(date);
-            const dateTs = dateObj.getTime();
-
-            if (dateTs < yearStart || dateTs > yearEnd)
-                continue;
-
-            const dayOfWeek = dateObj.getDay();
-            const month = dateObj.getMonth() + 1;
-
-            patterns.byDayOfWeek[dayOfWeek] += stats.totalSeconds || 0;
-            patterns.byMonth[month] += stats.totalSeconds || 0;
-
-            for (const [hour, seconds] of Object.entries(stats.hourlySeconds || {})) {
-                patterns.byHour[hour] = (patterns.byHour[hour] || 0) + seconds;
-            }
-        }
-
-        return patterns;
-    }
-
-    _getDateRange(period) {
-        const now = Date.now();
-        const today = new Date();
-
-        today.setHours(0, 0, 0, 0);
-
-        switch (period) {
-            case "today":
-                return { start: today.getTime(), end: now };
-            case "yesterday": {
-                const yesterday = new Date(today);
-                yesterday.setDate(yesterday.getDate() - 1);
-                return { start: yesterday.getTime(), end: today.getTime() - 1 };
-            }
-            case "week": {
-                const weekAgo = new Date(today);
-                weekAgo.setDate(weekAgo.getDate() - 7);
-                return { start: weekAgo.getTime(), end: now };
-            }
-            case "month": {
-                const monthAgo = new Date(today);
-                monthAgo.setMonth(monthAgo.getMonth() - 1);
-                return { start: monthAgo.getTime(), end: now };
-            }
-            case "year": {
-                const yearStart = new Date(today.getFullYear(), 0, 1);
-                return { start: yearStart.getTime(), end: now };
-            }
-            default:
-                return { start: 0, end: now };
-        }
+        this._saveTimeout = setTimeout(() => this.flush(), 5000);
     }
 
     async flush() {
-        await this._persistTrackStats();
-        await this._persistDailyStats();
-        await storageSync.flush();
+        if (this._saveTimeout) {
+            clearTimeout(this._saveTimeout);
+            this._saveTimeout = null;
+        }
+
+        const promises = [];
+
+        if (this._dirty.tracks) {
+            promises.push(chrome.storage.local.set({ [STORAGE_KEYS.TRACKS]: this._cache.tracks }));
+            this._dirty.tracks = false;
+        }
+
+        if (this._dirty.daily) {
+            promises.push(chrome.storage.local.set({ [STORAGE_KEYS.DAILY_STATS]: this._cache.daily }));
+            this._dirty.daily = false;
+        }
+
+        if (this._dirty.trackInfo) {
+            promises.push(chrome.storage.local.set({ [STORAGE_KEYS.TRACK_CACHE]: this._cache.trackInfo }));
+            this._dirty.trackInfo = false;
+        }
+
+        if (promises.length > 0) {
+            await Promise.all(promises);
+        }
+    }
+
+    async getTopTracks(options = {}) {
+        const { sortBy = "playCount", limit = 10, period = "all" } = options;
+
+        let items = Object.values(this._cache.tracks); items.sort((a, b) => {
+            const valA = a[sortBy] || 0;
+            const valB = b[sortBy] || 0;
+
+            return valB - valA;
+        });
+
+        const result = items.slice(0, limit);
+        return result.map(stats => ({
+            ...stats,
+            track: this._cache.trackInfo[stats.trackId] || null
+        }));
+    }
+
+    async getTotalStats(period = "all") {
+        let totalSeconds = 0;
+        let totalPlays = 0;
+        let totalTracks = 0;
+
+        const tracks = Object.values(this._cache.tracks); totalTracks = tracks.length; tracks.forEach(t => {
+            totalSeconds += t.totalSeconds || 0;
+            totalPlays += t.playCount || 0;
+        });
+
+        return { totalSeconds, totalPlays, totalTracks };
+    }
+
+    getDailyStatsForPeriod() {
+        return Object.entries(this._cache.daily).map(([date, stats]) => ({
+            date,
+            ...stats
+        })).sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 }
 

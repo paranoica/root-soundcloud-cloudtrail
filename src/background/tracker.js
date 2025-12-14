@@ -1,4 +1,4 @@
-import { TIME, STORAGE_KEYS } from "../shared/constants.js";
+import { STORAGE_KEYS } from "../shared/constants.js";
 import { storageManager } from "./storage-manager.js";
 import { apiClient } from "./api-client.js";
 import storageSync from "../shared/storage/sync.js";
@@ -8,17 +8,14 @@ class Tracker {
         this._state = {
             isPlaying: false,
             currentTrack: null,
-            sessionStart: 0,
             sessionSeconds: 0,
             lastTickTime: 0,
+            hasCountedPlay: false,
+            sessionFinished: false
         };
-
         this._tickInterval = null;
         this._saveInterval = null;
-
         this._enabled = true;
-        this._activeTabs = new Map();
-
         this._initialized = false;
     }
 
@@ -29,24 +26,21 @@ class Tracker {
         const settings = await storageSync.get(STORAGE_KEYS.SETTINGS, {});
         this._enabled = settings.trackingEnabled !== false;
 
-        const savedState = await storageSync.get(STORAGE_KEYS.CURRENT_TRACK, null);
-        if (savedState) {
-            this._state = { ...this._state, ...savedState };
+        const saved = await storageSync.get(STORAGE_KEYS.CURRENT_TRACK, null);
+        if (saved && saved.currentTrack) {
+            this._state.currentTrack = saved.currentTrack;
         }
 
-        this._startTicking();
         this._startPeriodicSave();
-
         this._initialized = true;
     }
 
     _startTicking() {
         if (this._tickInterval)
-            return;
+            clearInterval(this._tickInterval);
 
-        this._tickInterval = setInterval(() => {
-            this._tick();
-        }, TIME.TRACKING_INTERVAL);
+        this._state.lastTickTime = Date.now();
+        this._tickInterval = setInterval(() => this._tick(), 1000);
     }
 
     _stopTicking() {
@@ -56,127 +50,88 @@ class Tracker {
         }
     }
 
-    _startPeriodicSave() {
-        if (this._saveInterval)
-            return;
-
-        this._saveInterval = setInterval(async () => {
-            await this._saveState();
-        }, TIME.SAVE_INTERVAL);
-    }
-
     async _tick() {
-        if (!this._enabled || !this._state.isPlaying || !this._state.currentTrack) {
+        if (!this._enabled || !this._state.isPlaying || !this._state.currentTrack)
             return;
-        }
 
         const now = Date.now();
-        let elapsed = 1;
-
-        if (this._state.lastTickTime) {
-            const timeSinceLastTick = (now - this._state.lastTickTime) / 1000;
-            if (timeSinceLastTick <= 2) {
-                elapsed = Math.min(Math.round(timeSinceLastTick), 2);
-            }
-        }
+        const deltaSeconds = (now - this._state.lastTickTime) / 1000;
 
         this._state.lastTickTime = now;
-        this._state.sessionSeconds += elapsed;
 
-        await storageManager.addListeningTime(this._state.currentTrack.id, elapsed);
+        if (deltaSeconds > 0 && deltaSeconds < 10) {
+            this._state.sessionSeconds += deltaSeconds;
+
+            await storageManager.addListeningTime(this._state.currentTrack.id, deltaSeconds);
+            if (!this._state.hasCountedPlay && this._state.sessionSeconds >= 30) {
+                await this._triggerPlayCount();
+            }
+        }
     }
 
-    async _saveState() {
-        if (!this._state.currentTrack)
-            return;
-
-        await storageSync.set(STORAGE_KEYS.CURRENT_TRACK, {
-            isPlaying: this._state.isPlaying,
-            currentTrack: this._state.currentTrack,
-            sessionStart: this._state.sessionStart,
-            sessionSeconds: this._state.sessionSeconds,
-        });
+    async _triggerPlayCount() {
+        if (this._state.currentTrack) {
+            await storageManager.incrementPlayCount(this._state.currentTrack.id);
+            this._state.hasCountedPlay = true;
+        }
     }
 
     async handleTrackPlaying(data) {
         const { track, tabId } = data;
-        if (!track || !track.id) {
-            console.warn("[Tracker] Invalid track data");
+        if (!track || !track.id)
             return;
-        }
 
-        this._activeTabs.set(tabId, { track, isPlaying: true });
-        const isNewTrack = !this._state.currentTrack || this._state.currentTrack.id !== track.id;
+        const currentId = this._state.currentTrack ? String(this._state.currentTrack.id) : null;
+        const newId = String(track.id);
 
-        if (isNewTrack) {
-            if (this._state.currentTrack && this._state.sessionSeconds > 0) {
+        const isNewSession = (!this._state.currentTrack) ||
+            (currentId !== newId) ||
+            (this._state.sessionFinished);
+
+        if (isNewSession) {
+            if (this._state.currentTrack && this._state.sessionSeconds > 5) {
                 await this._endSession();
             }
 
             this._state.currentTrack = track;
-            this._state.sessionStart = Date.now();
             this._state.sessionSeconds = 0;
-            this._state.lastTickTime = Date.now();
+            this._state.hasCountedPlay = false;
+            this._state.sessionFinished = false;
 
             await storageManager.saveTrackInfo(track);
-            await storageManager.markTrackPlayed(track.id);
-
             this._enrichTrackInfo(track.id);
         }
 
         this._state.isPlaying = true;
-        this._state.lastTickTime = Date.now();
-
-        await this._tick();
+        this._startTicking();
     }
 
-    async handleTrackPaused(data) {
-        const { tabId } = data;
-        const tabState = this._activeTabs.get(tabId);
+    async handleTrackPaused() {
+        this._state.isPlaying = false;
+        this._stopTicking();
 
-        if (tabState) {
-            tabState.isPlaying = false;
-        }
-
-        const anyPlaying = Array.from(this._activeTabs.values()).some(t => t.isPlaying);
-        if (!anyPlaying) {
-            this._state.isPlaying = false;
-            await this._saveState();
-        }
+        await this._saveState();
     }
 
     async handleTrackChanged(data) {
-        if (this._state.currentTrack && this._state.sessionSeconds > 0) {
-            await this._endSession();
-        }
-
         await this.handleTrackPlaying(data);
     }
 
-    async handleTrackEnded(data) {
-        const { tabId } = data;
-
-        if (this._state.currentTrack && this._state.sessionSeconds > 0) {
-            const trackDuration = this._state.currentTrack.duration / 1000;
-            const completed = this._state.sessionSeconds >= trackDuration * 0.9;
-
-            await this._endSession(completed);
-        }
-
-        const tabState = this._activeTabs.get(tabId);
-        if (tabState) {
-            tabState.isPlaying = false;
-        }
-
+    async handleTrackEnded() {
         this._state.isPlaying = false;
+        this._stopTicking();
+        this._state.sessionFinished = true;
+
+        if (!this._state.hasCountedPlay && this._state.sessionSeconds > 10) {
+            await this._triggerPlayCount();
+        }
+
+        await this._endSession(true);
     }
 
     async handleTabClosed(tabId) {
-        const tabState = this._activeTabs.get(tabId);
-        this._activeTabs.delete(tabId);
-
-        if (tabState?.isPlaying) {
-            await this.handleTrackPaused({ tabId });
+        if (this._state.isPlaying) {
+            await this.handleTrackPaused();
         }
     }
 
@@ -189,19 +144,34 @@ class Tracker {
             this._state.sessionSeconds,
             completed
         );
-
-        this._state.sessionSeconds = 0;
-        this._state.sessionStart = 0;
     }
 
     async _enrichTrackInfo(trackId) {
         try {
             const fullInfo = await apiClient.getTrack(trackId);
-            if (fullInfo && this._state.currentTrack?.id === trackId) {
+            if (fullInfo && String(this._state.currentTrack?.id) === String(trackId)) {
                 this._state.currentTrack = { ...this._state.currentTrack, ...fullInfo };
                 await storageManager.saveTrackInfo(this._state.currentTrack);
             }
         } catch (error) { }
+    }
+
+    _startPeriodicSave() {
+        if (this._saveInterval)
+            clearInterval(this._saveInterval);
+
+        this._saveInterval = setInterval(async () => await this._saveState(), 5000);
+    }
+
+    async _saveState() {
+        if (!this._state.currentTrack)
+            return;
+
+        await storageSync.set(STORAGE_KEYS.CURRENT_TRACK, {
+            isPlaying: this._state.isPlaying,
+            currentTrack: this._state.currentTrack,
+            sessionSeconds: this._state.sessionSeconds,
+        });
     }
 
     getStatus() {
@@ -215,32 +185,16 @@ class Tracker {
 
     async setEnabled(enabled) {
         this._enabled = enabled;
+        if (!enabled)
+            this._stopTicking();
 
         const settings = await storageSync.get(STORAGE_KEYS.SETTINGS, {}); settings.trackingEnabled = enabled;
         await storageSync.set(STORAGE_KEYS.SETTINGS, settings, true);
-
-        if (!enabled && this._state.isPlaying) {
-            await this._endSession();
-            this._state.isPlaying = false;
-        }
-
-        console.log("[Tracker] Enabled:", enabled);
     }
 
     async cleanup() {
-        this._stopTicking();
-
-        if (this._saveInterval) {
-            clearInterval(this._saveInterval);
-            this._saveInterval = null;
-        }
-
-        if (this._state.currentTrack && this._state.sessionSeconds > 0) {
-            await this._endSession();
-        }
-
+        this._stopTicking(); clearInterval(this._saveInterval);
         await storageManager.flush();
-        console.log("[Tracker] Cleanup complete");
     }
 }
 
