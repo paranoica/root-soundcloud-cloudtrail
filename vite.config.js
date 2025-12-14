@@ -26,35 +26,33 @@ function copyStaticFiles() {
         name: "copy-static-files",
         writeBundle() {
             const distDir = resolve(__dirname, "dist");
-            if (!existsSync(distDir)) {
-                mkdirSync(distDir, { recursive: true });
+
+            const loaderSrc = resolve(__dirname, "src/content/loader.js");
+            const loaderDestDir = resolve(distDir, "src/content");
+
+            if (!existsSync(loaderDestDir))
+                mkdirSync(loaderDestDir, { recursive: true });
+
+            if (existsSync(loaderSrc)) {
+                copyFileSync(loaderSrc, resolve(loaderDestDir, "loader.js"));
             }
 
-            const manifestSrc = resolve(__dirname, "manifest.json"); if (existsSync(manifestSrc)) {
-                copyFileSync(manifestSrc, resolve(distDir, "manifest.json"));
-            } else {
-                console.error("File manifest.json not found!");
-            }
+            const copyList = [
+                { src: "manifest.json", dest: "manifest.json" },
+                { src: "_locales", dest: "_locales" },
+                { src: "assets", dest: "assets" },
+                { src: "src/styles", dest: "src/styles" },
+                { src: "src/popup/styles", dest: "src/popup/styles" },
+                { src: "src/dashboard/styles", dest: "src/dashboard/styles" },
+                { src: "src/content/inject.js", dest: "src/content/inject.js" }
+            ];
 
-            const localesSrc = resolve(__dirname, "_locales"); if (existsSync(localesSrc)) {
-                copyDirSync(localesSrc, resolve(distDir, "_locales"));
-            }
-
-            const assetsSrc = resolve(__dirname, "assets"); if (existsSync(assetsSrc)) {
-                copyDirSync(assetsSrc, resolve(distDir, "assets"));
-            }
-
-            const stylesSrc = resolve(__dirname, "src/styles"); if (existsSync(stylesSrc)) {
-                copyDirSync(stylesSrc, resolve(distDir, "src/styles"));
-            }
-
-            const popupStylesSrc = resolve(__dirname, "src/popup/styles"); if (existsSync(popupStylesSrc)) {
-                copyDirSync(popupStylesSrc, resolve(distDir, "src/popup/styles"));
-            }
-
-            const dashStylesSrc = resolve(__dirname, "src/dashboard/styles"); if (existsSync(dashStylesSrc)) {
-                copyDirSync(dashStylesSrc, resolve(distDir, "src/dashboard/styles"));
-            }
+            copyList.forEach(({ src, dest }) => {
+                const source = resolve(__dirname, src);
+                if (existsSync(source)) {
+                    statSync(source).isDirectory() ? copyDirSync(source, resolve(distDir, dest)) : copyFileSync(source, resolve(distDir, dest));
+                }
+            });
         }
     };
 }
@@ -72,13 +70,11 @@ export default defineConfig({
             },
             output: {
                 entryFileNames: (chunkInfo) => {
-                    if (chunkInfo.name === "background") {
+                    if (chunkInfo.name === "background")
                         return "src/background/index.js";
-                    }
 
-                    if (chunkInfo.name === "content") {
+                    if (chunkInfo.name === "content")
                         return "src/content/index.js";
-                    }
 
                     return "assets/[name]-[hash].js";
                 },

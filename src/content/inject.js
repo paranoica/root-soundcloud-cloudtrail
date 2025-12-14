@@ -1,80 +1,102 @@
-export function injectScript(code) {
-    return new Promise((resolve, reject) => {
+(function() {
+    if (window.__cloudtrail_intercepted)
+        return;
+    window.__cloudtrail_intercepted = true;
+
+    const originalFetch = window.fetch;
+    const originalXHROpen = XMLHttpRequest.prototype.open;
+    const originalXHRSend = XMLHttpRequest.prototype.send;
+    
+    function isSCApi(url) {
+        return url && (
+            url.includes("api-v2.soundcloud.com") || 
+            url.includes("api.soundcloud.com")
+        );
+    }
+    
+    function extractClientId(url) {
         try {
-            const script = document.createElement("script"); script.textContent = code;
-
-            script.onload = () => {
-                script.remove();
-                resolve();
-            };
-
-            script.onerror = (error) => {
-                script.remove();
-                reject(error);
-            };
-
-            (document.head || document.documentElement).appendChild(script);
-
-            if (!script.src) {
-                script.remove();
-                resolve();
-            }
-        } catch (error) {
-            reject(error);
+            const urlObj = new URL(url);
+            return urlObj.searchParams.get("client_id");
+        } catch {
+            return null;
         }
-    });
-}
-
-export function injectFunction(fn, ...args) {
-    return new Promise((resolve, reject) => {
-        const messageId = `ct_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-
-        const handler = (event) => {
-            if (event.data?.messageId === messageId) {
-                window.removeEventListener("message", handler);
-                if (event.data.error) {
-                    reject(new Error(event.data.error));
-                } else {
-                    resolve(event.data.result);
-                }
+    }
+    
+    function postToExtension(type, data) {
+        window.postMessage({
+            source: "cloudtrail-interceptor",
+            type: type,
+            data: data
+        }, "*");
+    }
+    
+    window.fetch = async function(...args) {
+        const url = args[0]?.url || args[0];
+    
+        if (typeof url === "string" && isSCApi(url)) {
+            const clientId = extractClientId(url);
+            if (clientId) {
+                postToExtension("CLIENT_ID", { clientId });
             }
-        };
+            
+            try {
+                const response = await originalFetch.apply(this, args);
+                const clone = response.clone();
 
-        window.addEventListener("message", handler); setTimeout(() => {
-            window.removeEventListener("message", handler);
-            reject(new Error("Injection timeout"));
-        }, 5000);
-
-        const code = `
-            (function() {
+                if (url.includes("/tracks") || url.includes("/stream") || url.includes("/play-history")) {
+                    clone.json().then(data => {
+                        if (data) {
+                            postToExtension("API_RESPONSE", { 
+                                url, 
+                                data
+                            });
+                        }
+                    }).catch(() => {});
+                }
+                
+                return response;
+            } catch (error) {
+                throw error;
+            }
+        }
+        
+        return originalFetch.apply(this, args);
+    };
+    
+    XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+        this._cloudtrailUrl = url;
+        return originalXHROpen.apply(this, [method, url, ...rest]);
+    };
+    
+    XMLHttpRequest.prototype.send = function(...args) {
+        const url = this._cloudtrailUrl;
+        
+        if (typeof url === "string" && isSCApi(url)) {
+            const clientId = extractClientId(url);
+            if (clientId) {
+                postToExtension("CLIENT_ID", { clientId });
+            }
+            
+            this.addEventListener("load", function() {
                 try {
-                    const fn = ${fn.toString()};
-                    const result = fn(${args.map(a => JSON.stringify(a)).join(", ")});
-
-                    window.postMessage({ messageId: "${messageId}", result: result }, "*");
-                } catch (error) {
-                    window.postMessage({ messageId: "${messageId}", error: error.message }, "*");
-                }
-            })();
-        `;
-
-        injectScript(code).catch(reject);
-    });
-}
-export function getPageValue(path) {
-    return injectFunction((p) => {
-        const parts = p.split(".");
-        let value = window;
-
-        for (const part of parts) {
-            if (part === "window")
-                continue;
-
-            if (value === undefined)
-                return undefined;
-
-            value = value[part];
+                    if (this.responseText && (this.responseType === "" || this.responseType === "text")) {
+                        if (url.includes("/tracks") || url.includes("/stream") || url.includes("/play-history")) {
+                            const data = JSON.parse(this.responseText); 
+                            postToExtension("API_RESPONSE", { 
+                                url, 
+                                data
+                            });
+                        }
+                    }
+                } catch (e) { }
+            });
         }
-        return value;
-    }, path);
-}
+        
+        return originalXHRSend.apply(this, args);
+    };
+    
+    if (window.__sc_hydration) {
+        postToExtension("HYDRATION_DATA", window.__sc_hydration);
+    }
+})();

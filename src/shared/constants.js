@@ -11,17 +11,17 @@ export const SOUNDCLOUD = {
 
     DEFAULT_CLIENT_ID: null,
     SELECTORS: {
-        PLAYER_CONTAINER: ".playControls",
+        PLAYER_CONTAINER: ".playControls__wrapper, .playControls__elements",
         PLAY_BUTTON: ".playControl",
         PLAYING_CLASS: "playing",
 
         TRACK_TITLE: ".playbackSoundBadge__titleLink",
         TRACK_ARTIST: ".playbackSoundBadge__lightLink",
-        TRACK_ARTWORK: ".playbackSoundBadge .image span.sc-artwork",
+        TRACK_ARTWORK: ".playbackSoundBadge__avatar .sc-artwork",
 
         PROGRESS_BAR: ".playbackTimeline__progressWrapper",
-        TIME_PASSED: ".playbackTimeline__timePassed span:last-child",
-        TIME_DURATION: ".playbackTimeline__duration span:last-child",
+        TIME_PASSED: ".playbackTimeline__timePassed span[aria-hidden='true']",
+        TIME_DURATION: ".playbackTimeline__duration span[aria-hidden='true']",
 
         LIKE_BUTTON: ".playbackSoundBadge__like",
     },
@@ -32,6 +32,7 @@ export const SOUNDCLOUD = {
         STREAM: "/stream",
         LIKES: "/likes",
         FOLLOWINGS: "/followings",
+        PLAY_HISTORY: "/play-history",
     },
 };
 

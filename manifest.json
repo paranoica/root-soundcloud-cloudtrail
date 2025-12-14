@@ -28,11 +28,9 @@
                 "*://soundcloud.com/*"
             ],
             "js": [
-                "src/content/index.js"
+                "src/content/loader.js"
             ],
-            "css": [],
-            "run_at": "document_start",
-            "all_frames": false
+            "run_at": "document_start"
         }
     ],
     "permissions": [
@@ -50,9 +48,10 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "assets/images/*",
-                "assets/fonts/*",
-                "src/dashboard/index.html"
+                "assets/*",
+                "src/dashboard/index.html",
+                "src/content/index.js",
+                "assets/*.js"
             ],
             "matches": [
                 "*://soundcloud.com/*"

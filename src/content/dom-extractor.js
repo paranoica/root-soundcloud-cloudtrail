@@ -18,6 +18,10 @@ class DOMExtractor {
             }
 
             const track = this._extractTrackFromPlayer();
+            if (track) {
+                this._cache.lastTrack = track;
+                this._cache.lastExtractTime = now;
+            }
 
             this._cache.lastTrack = track;
             this._cache.lastExtractTime = now;
@@ -45,18 +49,18 @@ class DOMExtractor {
         const artworkEl = document.querySelector(SELECTORS.TRACK_ARTWORK);
 
         if (artworkEl) {
-            const style = artworkEl.getAttribute("style") || "";
-            const match = style.match(/url\([""]?([^"")\s]+)[""]?\)/);
+            const style = artworkEl.style.backgroundImage || window.getComputedStyle(artworkEl).backgroundImage;
+            const match = style.match(/url\(["']?([^"']+)["']?\)/);
 
             if (match) {
                 artworkUrl = match[1].replace("-t50x50", "-t500x500").replace("-large", "-t500x500");
             }
         }
 
-        const trackUrl = titleEl.getAttribute("href") || "";
-        const permalink = trackUrl.replace(/^\//, "");
+        const trackHref = titleEl.getAttribute("href") || "";
+        const permalink = trackHref.replace(/^\//, "");
 
-        const trackId = this._extractTrackId(titleEl, permalink);
+        const trackId = this._generateTempId(permalink);
         const duration = this._extractDuration();
 
         return {
@@ -72,24 +76,11 @@ class DOMExtractor {
         };
     }
 
-    _extractTrackId(titleEl, permalink) {
-        const container = titleEl.closest("[data-track-id]");
-        if (container) {
-            return container.getAttribute("data-track-id");
-        }
+    _generateTempId(permalink) {
+        if (!permalink)
+            return `temp_${Date.now()}`;
 
-        const soundBadge = titleEl.closest(".playbackSoundBadge");
-        if (soundBadge) {
-            const trackIdAttr = soundBadge.querySelector("[data-track-id]"); if (trackIdAttr) {
-                return trackIdAttr.getAttribute("data-track-id");
-            }
-        }
-
-        if (permalink) {
-            return `temp_${this._hashString(permalink)}`;
-        }
-
-        return null;
+        return `temp_${this._hashString(permalink)}`;
     }
 
     _extractArtistPermalink(artistEl) {
@@ -127,16 +118,14 @@ class DOMExtractor {
             return true;
         }
 
-        const label = playButton.getAttribute("aria-label") || playButton.getAttribute("title") || "";
-        return label.toLowerCase().includes("pause");
+        return false;
     }
-
     isLiked() {
         const likeButton = document.querySelector(SELECTORS.LIKE_BUTTON);
         if (!likeButton)
             return false;
 
-        return likeButton.classList.contains("sc-button-selected") || likeButton.getAttribute("aria-pressed") === "true";
+        return likeButton.classList.contains("sc-button-selected");
     }
 
     _parseTimeString(timeStr) {
